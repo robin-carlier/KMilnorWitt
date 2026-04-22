@@ -184,7 +184,6 @@ lemma l₁_apply_eq_zero_of_mem_GWSet
   apply Set.mem_of_subset_of_mem AddSubgroup.subset_closure
   exact hx
 
-set_option backward.isDefEq.respectTransparency false in
 lemma induction_grothendieck_witt {P : GW F → Prop} (z : GW F)
     (P0 : P 0)
     (P1 : ∀ c : F, P (l c))

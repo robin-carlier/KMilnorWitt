@@ -240,7 +240,7 @@ section squareField
 def Square (F : Type*) [Field F] [CharP F 2] : Subfield F := (frobenius F 2).fieldRange
 
 instance {F : Type*} [Field F] [CharP F 2] : Field (↥(Square F)) :=
-  (Square F).toField
+  inferInstanceAs (Field <| (frobenius F 2).fieldRange)
 
 namespace Square
 
@@ -249,8 +249,7 @@ variable {F : Type*} [Field F] [CharP F 2]
 @[simp]
 lemma mem_iff (x : F) : x ∈ (Square F) ↔ (∃ v, v^2 = x) := by
   unfold Square
-  simp only [RingHom.mem_fieldRange]
-  rfl
+  simp [frobenius]
 
 lemma square_iff (x : Square F) : ∃ (v : F), v^2 = x := by
   exact x.prop
@@ -261,9 +260,7 @@ def mk (a : F) : Square F := ⟨a^2, ⟨a, by tauto⟩⟩
 @[grind .]
 lemma ne_zero_iff (c : Square F) : (c ≠ 0) ↔ (c.val ≠ 0) := by
   constructor
-  · intro h
-    simp only [ne_eq, ZeroMemClass.coe_eq_zero]
-    exact h
+  · grind [ZeroMemClass.coe_eq_zero]
   · simp
 
 @[simp, grind =>]
@@ -281,9 +278,8 @@ variable {F : Type*} [Field F]
 
 lemma KWEquiv.square_smul [CharP F 2] (a : F) (c : Square F) (hc : c ≠ 0 := by grind) :
     [a] ≃ᴋᴡ [c • a] := by
-  simp only [Square.smul_def]
   obtain ⟨c, ⟨v, rfl⟩⟩ := c
-  simp only [frobenius, RingHom.coe_mk, powMonoidHom_apply]
+  dsimp [frobenius]
   rw [mul_comm]
   exact KWEquiv.sq a v (by grind)
 
@@ -430,7 +426,7 @@ lemma mem_nonemptyProducts_of_ne_nil [DecidableEq F] (l : List F) (hl : l ≠ []
       split_ifs with ha
       · grind
       · rw [Finset.mem_map]
-        use (b :: l).prod
+        use (b::l).prod
         simp [hl]
 
 lemma exists_prefix_of_not_nonemptyProductsList_nodup
@@ -465,7 +461,7 @@ lemma exists_eq_prod_of_mem_nonemptyProducts [DecidableEq F] (l : List F) (hl : 
       | cons head tail =>
         obtain ⟨L, hL, rfl⟩ :=
           ih (by simp) y (by rwa [← mem_nonemptyProducts_iff_mem_nonemptyProductsList])
-        use a:: L
+        use a::L
         grind
 
 lemma nonemptyProducts_subset_cons [DecidableEq F] (l : List F) (a : F) :
@@ -503,17 +499,13 @@ lemma nonemptyProductsList_perm_of_perm {l l' : List F} (hll' : l ~ l') :
     grind
   | trans _ _ _ _ => grind
 
+attribute [local grind =_] mem_nonemptyProducts_iff_mem_nonemptyProductsList in
+attribute [local grind →] nonemptyProductsList_perm_of_perm in
 @[grind →]
 lemma nonemptyProducts_eq_of_perm [DecidableEq F] {l l' : List F} (hll' : l ~ l') :
     nonemptyProducts l' = nonemptyProducts l := by
   ext x
-  refine ⟨fun h ↦ ?_, fun h ↦ ?_⟩
-  · rw [← mem_nonemptyProducts_iff_mem_nonemptyProductsList] at h ⊢
-    have := nonemptyProductsList_perm_of_perm hll'
-    grind
-  · rw [← mem_nonemptyProducts_iff_mem_nonemptyProductsList] at h ⊢
-    have := nonemptyProductsList_perm_of_perm hll'
-    grind
+  constructor <;> grind
 
 lemma mem_nonemptyProducts_of_ne_nil'' [DecidableEq F] (l l' : List F) (hl : l ≠ [])
     (hll' : l <+~ l') :
@@ -534,18 +526,11 @@ lemma nonemptyProducts_pair [DecidableEq F] (a b : F) :
   dsimp [nonemptyProducts]
   split_ifs
   · grind
-  · ext
-    dsimp
-    simp only [Finset.map_insert, Function.Embedding.coeFn_mk, Finset.map_singleton, mul_zero,
-      Finset.union_insert, Finset.insert_union, Finset.union_idempotent, Finset.mem_insert,
-      Finset.mem_singleton]
-    grind
+  · grind [Finset.map_insert, Function.Embedding.coeFn_mk, Finset.map_singleton, mul_zero,
+      Finset.union_idempotent]
   · grind
-  · ext
-    dsimp
-    simp only [Function.Embedding.coeFn_mk, Finset.map_singleton,
-      Finset.insert_union, Finset.mem_insert, Finset.mem_singleton]
-    grind
+  · grind [Finset.insert_empty, Function.Embedding.coeFn_mk, Finset.map_singleton]
+
 end nonemptyProducts
 
 lemma nonemptyProducts_span_subset [CharP F 2] [DecidableEq F] (l : List F) (a : F) :
@@ -692,7 +677,8 @@ theorem exists_KWEquiv_cons_of_mem_span_nonemptyProducts
             · subst_vars
               simpa using (KWEquiv.sq a s (by grind)).append l
             · obtain ⟨L₀, hL₀⟩ := hr z hz_z hz₁
-              have := hL₀.cons _|>.trans <| KWEquiv.mul_square_add a s z L₀
+              have : a :: l ≃ᴋᴡ a * (s ^ 2 + z) :: z :: L₀ :=
+                hL₀.cons _|>.trans <| KWEquiv.mul_square_add a s z L₀
               grind
           by_cases hx_z : t = 0
           · grind
@@ -727,21 +713,17 @@ lemma List.prod_mem_square
       let l' := l.diff [a, a]
       have : (l' ++ [a,a] : Multiset F) = l := by
         ext b
-        simp [l', List.count_erase, List.count_cons]
-        grind
+        grind [Multiset.coe_count, diff_cons, diff_nil]
       have hl' : 0 < l.length := List.length_pos_of_ne_nil hl
       obtain ⟨v₁, hv₁⟩ := ih (n - 2) (by grind) l'
-        (by simp only [diff_cons, diff_nil, count_erase, beq_iff_eq, l']; grind)
+        (by grind [diff_cons, diff_nil])
         (by
           have : l.head hl ∈ l.erase (l.head hl) := by
             simp only [← count_pos_iff, count_erase_self, tsub_pos_iff_lt]
             grind
-          simp only [diff_cons, diff_nil, length_erase, head_mem, h, l', a]
-          grind)
+          grind [diff_cons, diff_nil, length_erase, head_mem])
       use v₁ * a
-      rw [← Multiset.prod_coe, ← this]
-      simp only [Multiset.prod_coe, prod_append, prod_cons, prod_nil, mul_one]
-      grind
+      grind [Multiset.prod_coe, congr($(this).prod)]
 
 open _root_.List in
 -- TODO: cleanup
@@ -766,27 +748,18 @@ lemma mul_eq_smul_square_of_mem_nonemptyProducts [DecidableEq F] (l : List F) (x
     let L₁ := Lx.diff Ly ++ Ly.diff Lx
     have h : L₁ <+~ l := by grind [List.count_diff, List.subperm_iff_count]
     have : (Lx ++ Ly).prod = t • L₁.prod := by
-      dsimp [t]
-      rw [← List.prod_append]
       suffices h : (Multiset.ofList (Lx ++ Ly)) = (Multiset.ofList (L₀ ++ L₁)) by
         apply_fun (·.prod) at h
         simpa using h
       ext
-      dsimp [L₁, L₀]
-      simp only [Multiset.coe_count, List.count_append, List.append_assoc, List.count_bagInter,
-        List.count_diff]
-      grind
+      grind [Multiset.coe_count, List.append_assoc, List.count_bagInter, List.count_diff]
     suffices hL₁' : L₁.prod ∈ nonemptyProducts l by
       exact ⟨L₁.prod, hL₁', this⟩
     have hL₁ : L₁ ≠ [] := by
       intro hL₁
-      rw [hL₁] at this
-      dsimp [L₁] at hL₁
-      simp only [List.append_eq_nil_iff] at hL₁
-      obtain ⟨hLxy, hLxy'⟩ := hL₁
       suffices abs : Lx ~ Ly by
         grind [abs.prod_eq]
-      exact List.perm_of_diff_eq_nil hLxy hLxy'
+      apply List.perm_of_diff_eq_nil <;> grind
     exact mem_nonemptyProducts_of_ne_nil'' _ _ hL₁ h
 
 lemma mul_mem_span_nonemptyProducts [DecidableEq F] (l : List F) (x y : F)
@@ -805,28 +778,13 @@ lemma one_mem_span_nonemptyProducts_of_not_linearIndependent [DecidableEq F]
   obtain ⟨s, g, hs, t, hi₀, hi₁⟩ := hl₂
   rw [← (Finset.add_sum_erase (a := t) _ _ hi₀)] at hs
   apply_fun (· * ↑t) at hs
-  -- helping field_simp below
-  have := nonemptyProducts_nonzero _ hl₁
-  have : (t : F) ≠ 0 := by grind
-  have : (g t : F) ≠ 0 := by grind
-  rw [zero_mul, add_mul] at hs
   suffices h : (g t) • (t : F) * t ∈ Submodule.span (Square F) (nonemptyProducts l) by
     have h₀ := Submodule.span (Square F) (nonemptyProducts l : Set F) |>.smul_mem
       (g t * Square.mk (t : F))⁻¹ h
-    convert h₀
-    dsimp
-    field_simp
-  rw [add_eq_zero_iff_eq_neg] at hs
-  rw [hs]
-  apply Submodule.neg_mem
-  rw [Finset.sum_mul]
-  apply Submodule.sum_mem
-  intro y hy
-  rw [smul_mul_assoc]
-  apply Submodule.smul_mem
-  simp only [Finset.mem_erase, ne_eq] at hy
-  obtain ⟨hy₁, hy₂⟩ := hy
-  apply mul_mem_span_nonemptyProducts <;> grind
+    grind [Square.smul_def, Subfield.coe_mul, Square.mk_coe, nonemptyProducts_nonzero _ hl₁]
+  grind [zero_mul, add_mul, add_eq_zero_iff_eq_neg,
+    Submodule.neg_mem, Finset.sum_mul, Submodule.sum_mem, smul_mul_assoc,
+    Submodule.smul_mem, mul_mem_span_nonemptyProducts]
 
 -- TODO: This proof is too long, extract lemmas and cleanup
 /-- If the list of finite products of `l` has duplicates, then it is KW-zero-equiv. -/
@@ -842,18 +800,14 @@ lemma KWEquiv₀_of_not_nodup_nonemptyProductsList
       not_nodup_nonemptyProductsList_cons l₀ a ha hl₀ h₁ h₂
   · have hl₀' : l₀ ≠ [] := list_ne_nil_of_nonemptyProductsList_ne_nil l₀ (List.ne_nil_of_mem ha₀)
     have ha₀' : a ∈ Submodule.span (Square F) (nonemptyProducts l₀ : Set F) := by
-      apply Submodule.subset_span
-      rw [← nonemptyProducts_eq_nonemptyProducts' l₀]
-      dsimp only [nonemptyProducts']
-      simp only [List.coe_toFinset, Set.mem_setOf_eq, ha₀]
+      grind [Submodule.mem_span_of_mem,
+        =_ nonemptyProducts_eq_nonemptyProducts', List.coe_toFinset]
     obtain ⟨l₁, hl₁⟩ := exists_KWEquiv_cons_of_mem_span_nonemptyProducts l₀ hl₀' a ha ha₀'
     suffices he : KWEquiv₀ (a::a::l₁) by grind
     exact KWEquiv₀.self_self_cons a l₁
   · have h_one' : 1 ∈ Submodule.span (Square F) (nonemptyProducts l₀ : Set F) := by
-      apply Submodule.subset_span
-      rw [← nonemptyProducts_eq_nonemptyProducts' l₀]
-      dsimp only [nonemptyProducts']
-      simp only [List.coe_toFinset, Set.mem_setOf_eq, h_one_in]
+      grind [Submodule.mem_span_of_mem,
+        =_ nonemptyProducts_eq_nonemptyProducts', List.coe_toFinset]
     have hl₀' : l₀ ≠ [] :=
       list_ne_nil_of_nonemptyProductsList_ne_nil l₀ <| List.ne_nil_of_mem h_one_in
     obtain ⟨l₁, hl₁⟩ :=
@@ -869,17 +823,10 @@ lemma KWEquiv₀_of_not_nodup_nonemptyProductsList
       obtain ⟨t, z, hz, htz⟩ := mul_eq_smul_square_of_mem_nonemptyProducts l₀ x y hx' hy' hxy
       rw [← mul_comm x y, htz] at haxy
       suffices ha' : a = (t / Square.mk x) • z by
-        rw [ha']
-        apply Submodule.smul_mem
-        apply Submodule.subset_span
-        exact hz
+        grind [Submodule.smul_mem, Submodule.mem_span_of_mem]
       · have hxnz := (nonemptyProductsList_nonzero l₀ hl₀ x hx)
         apply_fun (Square.mk x • ·)
-        · dsimp only
-          rw [smul_smul]
-          simp only [Square.smul_def, Square.mk_coe, Subfield.coe_mul,
-            Subfield.coe_div] at htz haxy ⊢
-          grind
+        · grind [smul_smul, Square.smul_def, Square.mk_coe, Subfield.coe_mul, Subfield.coe_div]
         · exact smul_right_injective F (Square.mk_ne_zero hxnz)
     obtain ⟨l₁, hl₁⟩ := exists_KWEquiv_cons_of_mem_span_nonemptyProducts l₀ hl₀' a ha ha'
     suffices he : KWEquiv₀ (a::a::l₁) from he.of_KWEquiv (hl₁.cons a).symm
@@ -939,7 +886,7 @@ theorem map_C_prod_eq_zero_of_finrank_le_two_pow (n : ℕ) (l : List F) (hl : l.
     (l.map C).prod = 0 := by
   rw [← l.take_append_drop (n + 1), List.map_append, List.prod_append]
   suffices H : (List.map C (List.take (n + 1) l)).prod = 0 by grind
-  exact (KWEquiv₀_of_finrank_le_two_pow n (l.take (n +1)) (by grind) hd).map_C_prod_eq_zero
+  exact (KWEquiv₀_of_finrank_le_two_pow n (l.take (n + 1)) (by grind) hd).map_C_prod_eq_zero
 
 end squareField
 
