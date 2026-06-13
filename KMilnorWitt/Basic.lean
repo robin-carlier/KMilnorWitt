@@ -24,7 +24,6 @@ and we do not address its `GW(F)`-algebra structure.
 -- Better simps lemmas?
 -- Better namespacing?
 
-
 section PreKMW
 /-! We first need to set up some boilerplate in order to define KMilnorWitt:
 namely, the type of generators in KMilnorWitt, and the free ℤ-algebra on
@@ -644,8 +643,7 @@ lemma ε'_succ (n : ℕ) : ε' F (n + 1) = (ε' F n) * ⟪(-1 : F)⟫ + 1 := by
     congr
     grind [neg_one_pow_eq_ite]
 
-/-- Under the assumption that -1 is a square, there is a formula for [a ^ n] in terms
-of [a]. -/
+/-- Corresponds to lemma 2.15 in arXiv:2306.16985 -/
 lemma S_pow
     (a : F) (n : ℕ) (ha : a ≠ 0) :
     ⦃a ^ n⦄ = (ε' F n) * ⦃a⦄ := by
@@ -682,6 +680,7 @@ lemma S_inv' (a : F) (ha : a ≠ 0) :
   congr
   simp [ε, L]
 
+/-- Corresponds to lemma 2.15 in arXiv:2306.16985 (negative part) -/
 lemma S_zpow_neg (a : Fˣ) (n : ℕ) :
     ⦃(a ^ (- n : ℤ) : F)⦄ = ε * (ε' F n) * ⦃(a : F)⦄ := by
   rw [zpow_neg, zpow_natCast, ← inv_pow, S_pow _ _ (by simp), S_inv' _ (by simp),
