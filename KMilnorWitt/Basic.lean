@@ -368,6 +368,11 @@ lemma L_center (a : F) (X : KMilnorWitt F) : ⟪a⟫ * X = X * ⟪a⟫ := by
   | h_mul u v hu hv => rw [mul_assoc, ← hv, ← mul_assoc _ u v, hu, ← mul_assoc]
   | h_add a b ha hb => rw [mul_add, ha, hb, add_mul]
 
+lemma IsMulCentral_L (a : F) : IsMulCentral ⟪a⟫ where
+  comm x := by grind [Commute, SemiconjBy]
+  left_assoc := by grind
+  right_assoc := by grind
+
 lemma L_center_assoc (a : F) (X Y : KMilnorWitt F) : (X * (⟪a⟫ * Y)) = ⟪a⟫ * (X * Y) := by
   rw [← mul_assoc, ← L_center, mul_assoc]
 
@@ -591,6 +596,99 @@ lemma ε_comm_S (a b : F) : ⦃a⦄ * ⦃b⦄ = ε * ⦃b⦄ * ⦃a⦄ := by
     _ = ⦃a⦄ * ⦃b⦄ + 0                                := by simp [mul_assoc, add_mul, mul_assoc,
                                                                S_neg_mul_S]
     _ = ⦃a⦄ * ⦃b⦄                                    := by rw [add_zero]
+
+section pow
+
+variable (F) in
+/-- The element noted $n_{\epsilon}$ (when n > 0). -/
+abbrev ε' (n : ℕ) := ∑ i ∈ Finset.Icc 1 n, ⟪(-1 : F) ^ (i - 1)⟫
+
+lemma ε'_zero : ε' F 0 = 0 := by
+  simp [ε']
+
+lemma ε'_one : ε' F 1 = 1 := by
+  simp [ε']
+
+variable (F) in
+lemma ε'_central (n : ℕ) : IsMulCentral (ε' F n) where
+  comm a := by
+    dsimp [ε']
+    apply Commute.sum_left
+    intro i _
+    grind [commute_iff_eq]
+  left_assoc := by grind
+  right_assoc := by grind
+
+variable (F) in
+lemma ε'_succ (n : ℕ) : ε' F (n + 1) = (ε' F n) * ⟪(-1 : F)⟫ + 1 := by
+  dsimp [ε']
+  have : Finset.Icc 1 (n + 1) = {1} ∪ Finset.Icc 2 (n + 1) := by grind
+  rw [Finset.sum_mul, this]
+  rw [Finset.sum_congr
+    (f := fun i ↦ ⟪(-1) ^ (i - 1)⟫ * ⟪-1⟫)
+    (g := fun i ↦ ⟪(-1) ^ i⟫)
+    (h := (rfl : Finset.Icc 1 n = _))]
+  · have : Finset.Icc 2 (n + 1) = (Finset.Icc 1 n).image (· + 1) := by
+      ext i
+      simp only [Finset.mem_Icc, Finset.mem_image]
+      constructor
+      · intro hi1
+        use (i - 1)
+        grind
+      · grind
+    simp [this]
+    grind
+  · intro i hi
+    rw [Finset.mem_Icc] at hi
+    rw [← L_mul (by grind [neg_one_pow_eq_ite])]
+    congr
+    grind [neg_one_pow_eq_ite]
+
+/-- Under the assumption that -1 is a square, there is a formula for [a ^ n] in terms
+of [a]. -/
+lemma S_pow
+    (a : F) (n : ℕ) (ha : a ≠ 0) :
+    ⦃a ^ n⦄ = (ε' F n) * ⦃a⦄ := by
+  induction n with
+  | zero => simp [ε']
+  | succ n ih =>
+    calc
+      _ = ⦃a ^ n⦄ + ⦃a⦄ + η * ⦃a ^ n⦄ * ⦃a⦄ := by
+        have ha : a ^ n ≠ 0 := by grind [pow_eq_zero_iff']
+        rw [pow_add, pow_one, S_mul (a := a ^n) (b := a)]
+      _ = (ε' F n) * ⦃a⦄ + ⦃a⦄ + η * (ε' F n) * ⦃a⦄ * ⦃a⦄ := by grind
+      _ = (ε' F n) * ⦃a⦄ + ⦃a⦄ + (ε' F n) * η * ⦃- 1⦄ * ⦃a⦄ := by
+        grind [((ε'_central F n).comm η).eq, S_mul_S_self_eq_S_neg_one_mul_S a]
+      _ = ((ε' F n) + 1 + (ε' F n) * η * ⦃- 1⦄) * ⦃a⦄ := by grind
+      _ = ((ε' F n) * (1 + η * ⦃- 1⦄) + 1) * ⦃a⦄ := by grind
+      _ = ((ε' F n) * ⟪(-1 : F)⟫ + 1) * ⦃a⦄ := by grind [L_def]
+      _ = (ε' F (n + 1)) * ⦃a⦄ := by rw [ε'_succ F n]
+
+lemma L_inv_eq (a : F) (ha : a ≠ 0) :
+    ⟪a⁻¹⟫ = ⟪a⟫ := by
+  have : Invertible ⟪a⟫ := instInvertibleL a
+  apply_fun (⟪a⟫ * ·)
+  · simp only [L_mul_self_inv]; rw [← L_mul, L_mul_self]
+  · intro x y hxy
+    grind [mul_left_inj_of_invertible ⟪a⟫]
+
+lemma S_inv' (a : F) (ha : a ≠ 0) :
+    ⦃a⁻¹⦄ = ε * (ε' F 1) * ⦃a⦄ := by
+  rw [S_inv, ε'_one, L_inv_eq _ ha, L_def, neg_mul,
+    add_mul, mul_assoc, S_mul_S_self_eq_S_neg_one_mul_S]
+  suffices h : - (1 + η * ⦃(-1 : F)⦄) * ⦃a⦄ = ε * ⦃a⦄ by
+    rw [neg_mul, add_mul] at h
+    grind
+  congr
+  simp [ε, L]
+
+lemma S_zpow_neg (a : Fˣ) (n : ℕ) :
+    ⦃(a ^ (- n : ℤ) : F)⦄ = ε * (ε' F n) * ⦃(a : F)⦄ := by
+  rw [zpow_neg, zpow_natCast, ← inv_pow, S_pow _ _ (by simp), S_inv' _ (by simp),
+    ε'_one, mul_one]
+  grind
+
+end pow
 
 end KMilnorWitt
 
